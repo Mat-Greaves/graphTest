@@ -5,8 +5,8 @@ const { buildSchema } = require("graphql");
 const schema = buildSchema(`
   type User {
     id: ID!
-    name: String!
-    devices: [Device!]!
+    name: String
+    devices: [Device!]
   }
 
   type Device {
@@ -18,12 +18,12 @@ const schema = buildSchema(`
   type Product {
     id: ID!
     name: String!
-    users: [User!]!
+    users(getDetailed: Boolean): [User!]!
   }
 
   type Query {
-    user(id: ID!): User
     product(id: ID!): Product
+    user(id: ID!): User
   }
 `);
 
@@ -33,22 +33,31 @@ class User {
     this.name = fakeDatabase.users[id].name;
   }
   async devices() {
-    console.log("fetching devices");
+    console.log("fetching devices!");
     return fakeDatabase.users[this.id].devices;
   }
 }
+// TODO, create userSummary field on product that only gives high level info, then maybe have another query to get detailed versions?
 
 class Product {
   constructor(id) {
     this.id = id;
     this.name = fakeDatabase.products[id].name;
   }
-  users() {
-    console.log("fetching users!");
-    return fakeDatabase.products[this.id].users.map(user => {
-      console.log(user);
-      return new User(user.id);
-    });
+  users({ getDetailed }) {
+    if (getDetailed) {
+      return fakeDatabase.products[this.id].users.map(user => {
+        //do full search
+        return new User(user.id);
+      });
+    } else {
+      //do a list '' faked by only including id, devices and name will never work
+      return fakeDatabase.products[this.id].users.map(user => {
+        return {
+          id: user.id
+        };
+      });
+    }
   }
 }
 
@@ -81,6 +90,7 @@ const fakeDatabase = {
     }
   }
 };
+
 const root = {
   user: function({ id }) {
     return new User(id);
